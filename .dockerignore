@@ -1,9 +1,5 @@
-**/node_modules/
-
-.git
-.gitignore
-node_modules
-vendor
-storage/logs
-*.md
+*.tar
+vendor/
+node_modules/
+storage/logs/
 *.log
