@@ -53,5 +53,24 @@ services:
       database:
         condition: service_healthy
 
+  searcher:
+    image: elasticsearch:8.11.1
+    container_name: searcher
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false # Disable security for simplicity
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
 volumes:
   dbdata:
+  esdata:
