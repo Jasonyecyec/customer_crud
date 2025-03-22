@@ -3,15 +3,35 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Services\ElasticsearchService;
 use App\Models\Customer;
 
 class CustomerController extends Controller
 {
+
+    protected $elasticsearch;
+
+    public function __construct(ElasticsearchService $elasticsearch)
+    {
+        $this->elasticsearch = $elasticsearch;
+    }
+
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->has('search')) {
+            \Log::info("message");
+            $results = $this->elasticsearch->searchCustomers($request->input('search'));
+            return response()->json([
+                'success' => true,
+                'message' => 'Search results retrieved successfully.',
+                'data' => $results
+            ]);
+        }
+
         $customers = Customer::all();
         return response()->json([
             'success' => true,
@@ -44,7 +64,7 @@ class CustomerController extends Controller
         }
 
         $customer = Customer::create($validated);
-
+        $this->elasticsearch->indexCustomer($customer);
         return response()->json([
             'success' => true,
             'message' => 'Customer created successfully.',
@@ -87,9 +107,6 @@ class CustomerController extends Controller
             'email' => 'sometimes|string|email:dns,rfc|unique:customers,email,' . $id . '|max:255',
             'contact_number' => 'nullable|string|max:20',
         ]);
-        
-        $customer->update($validated);
-        $customer = Customer::find($id);
 
         if (!$customer) {
             return response()->json([
@@ -97,7 +114,11 @@ class CustomerController extends Controller
                 'message' => 'Customer not found.'
             ], 404);
         }
-
+        
+        $customer->update($validated);
+        $this->elasticsearch->updateCustomer($customer);
+        $customer = Customer::find($id);
+   
         return response()->json([
             'success' => true,
             'message' => 'Customer updated  successfully.',
@@ -120,7 +141,8 @@ class CustomerController extends Controller
         }
 
         $customer->delete();
-
+        $this->elasticsearch->deleteCustomer($id);
+        
         return response()->json([
             'success' => true,
             'message' => 'Customer deleted successfully.'
