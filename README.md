@@ -8,6 +8,9 @@ This guide provides step-by-step instructions to start the **Customer CRUD** app
 - **Services:** Nginx, MySQL, and Elasticsearch.
 
 ---
+![image](https://github.com/user-attachments/assets/08a0c981-cf92-4392-93a5-db562cb566c0)
+![image](https://github.com/user-attachments/assets/85a038e7-a439-4347-ac3b-677b48f59d86)
+
 
 ## 📋 Prerequisites
 
