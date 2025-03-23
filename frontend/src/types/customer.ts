@@ -12,6 +12,7 @@ export type CustomerResponse = {
   email: string;
   contact_number: string;
   created_at: Date;
+  updated_at: Date;
 };
 
 export type ApiResponse<T> = {
