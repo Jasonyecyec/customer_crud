@@ -45,31 +45,47 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email:dns,rfc|unique:customers,email|max:255',
-            'contact_number' => 'nullable|string|max:20'            
-        ]);
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'required|string|email:dns,rfc|unique:customers,email|max:255',
+                'contact_number' => 'nullable|string|max:20'
+            ]);
 
-        // Check if customer already exists by email
-        $existingCustomer = Customer::where('email', $validated['email'])->first();
-
-        if ($existingCustomer) {
+             // Create the customer
+            $customer = Customer::create($validated);
+        
+            // Index the customer in Elasticsearch
+            $this->elasticsearch->indexCustomer($customer);
+        
+            // Return success response
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer created successfully.',
+                'data' => $customer
+            ], 201);
+    
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Check if the error is due to a duplicate email
+            if ($e->validator->errors()->has('email')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer with this email already exists.',
+                    'data' => null
+                ], 409); 
+            }
+    
+            // Return other validation errors if any
             return response()->json([
                 'success' => false,
-                'message' => 'Customer with this email already exists.',
-                'data' => $existingCustomer
-            ], 409); 
+                'message' => 'Validation error.',
+                'errors' => $e->validator->errors()
+            ], 422);
         }
-
-        $customer = Customer::create($validated);
-        $this->elasticsearch->indexCustomer($customer);
-        return response()->json([
-            'success' => true,
-            'message' => 'Customer created successfully.',
-            'data' => $customer
-        ], 201);
+    
+       
     }
 
     /**
@@ -99,31 +115,51 @@ class CustomerController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $customer = Customer::findOrFail($id);
+        try{
+            $customer = Customer::findOrFail($id);
 
-        $validated = $request->validate([
-            'first_name' => 'sometimes|string|max:255',
-            'last_name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|string|email:dns,rfc|unique:customers,email,' . $id . '|max:255',
-            'contact_number' => 'nullable|string|max:20',
-        ]);
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer not found.'
+                ], 404);
+            }
 
-        if (!$customer) {
+            $validated = $request->validate([
+                'first_name' => 'sometimes|string|max:255',
+                'last_name' => 'sometimes|string|max:255',
+                'email' => 'sometimes|string|email:dns,rfc|max:255|unique:customers,email,' . $id,
+                'contact_number' => 'nullable|string|max:20',
+            ]);
+    
+          
+            $customer->update($validated);
+            $this->elasticsearch->updateCustomer($customer);
+            $customer = Customer::find($id);
+       
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer updated  successfully.',
+                'data' => $customer
+            ], 200);
+        }catch (\Illuminate\Validation\ValidationException $e) {
+            // Check if the error is due to a duplicate email
+            if ($e->validator->errors()->has('email')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer with this email already exists.',
+                    'data' => null
+                ], 409); 
+            }
+    
+            // Return other validation errors if any
             return response()->json([
                 'success' => false,
-                'message' => 'Customer not found.'
-            ], 404);
+                'message' => 'Validation error.',
+                'errors' => $e->validator->errors()
+            ], 422);
         }
-        
-        $customer->update($validated);
-        $this->elasticsearch->updateCustomer($customer);
-        $customer = Customer::find($id);
-   
-        return response()->json([
-            'success' => true,
-            'message' => 'Customer updated  successfully.',
-            'data' => $customer
-        ], 200);
+       
     }
 
     /**

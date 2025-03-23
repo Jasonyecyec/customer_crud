@@ -41,7 +41,7 @@ class ElasticsearchService
                 'doc' => [
                     'first_name' => $customer->first_name,
                     'last_name' => $customer->last_name,
-                    'email' => $customer->$email,
+                    'email' => $customer->email,
                     'contact_number' => $customer->contact_number ?? null,
                 ],
             ],
